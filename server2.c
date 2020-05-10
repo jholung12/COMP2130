@@ -10,10 +10,16 @@
 #define BUF_SIZE	1024
 #define LISTEN_PORT	60000
 
+typedef struct Friend{
+
+} Friend;
+
 typedef struct Client{
   int id;
   char name[15];
   char ipv4[16]; // change data type
+  int status;
+  Friend friends[10];
 } Client;
 
 void newClient(Client *c, char name[], char ipv4[], int clientCount){
@@ -38,8 +44,21 @@ void displayClients(Client c[], int clientCount){
   }
 }
 
-void fileCheck(){
+void fileWrite(char message[]){
+  FILE *fptr;
 
+  if((fptr = fopen("log.txt","a"))== NULL){
+    fprintf(stderr,"FILE COULD NOT BE OPENED.\n");
+  }
+  else{
+    fprintf(fptr,"%s",message);
+  }
+
+  fclose(fptr);
+}
+
+void registerUser(){
+  
 }
 
 
