@@ -1,7 +1,9 @@
 # COMP2130
 
-For the test files use these to compile:
+So client3 and server3 use forks to handle the multiple clients.
 
-gcc -Wall -g3 -fsanitize=address -pthread testserver.c -o testserver
+Still not sure how to get them to message individuals, like get client 1 to send a message and print out on client 2.
 
-gcc -Wall -g3 -fsanitize=address -pthread testclient.c -o testclient
+But sending to server and server response is there.
+
+Maybe if we join solution 2 and 3 we could get somewhere with that.
