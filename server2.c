@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
+
 #define BUF_SIZE	1024
 #define LISTEN_PORT	60000
 
@@ -58,11 +59,12 @@ void fileWrite(char message[]){
 }
 
 void registerUser(){
-  
+
 }
 
 
 int main(int argc, char *argv[]){
+    //int listen_port = 60000;
     int			sock_recv, sock_send;
     struct sockaddr_in	my_addr;
     struct sockaddr_in	addr_send;
@@ -73,7 +75,7 @@ int main(int argc, char *argv[]){
     struct sockaddr_in	remote_addr;
     int			recv_msg_size;
     char			buf[BUF_SIZE];
-    int			select_ret;
+    int			select_ret, bytes_sent;
     int len, clientCount = 0, idCount = 0;
     char from[15];
     Client clients[20];
@@ -98,6 +100,11 @@ int main(int argc, char *argv[]){
     addr_send.sin_family = AF_INET;  /* address family */
     addr_send.sin_addr.s_addr = inet_addr("127.0.0.1");
     addr_send.sin_port = htons((unsigned short)LISTEN_PORT);
+        /* make local address structure */
+    //memset(&my_addr, 0, sizeof (my_addr));	/* zero out structure */
+    //my_addr.sin_family = AF_INET;	/* address family */
+    //my_addr.sin_addr.s_addr = htonl(INADDR_ANY);  /* current machine IP */
+    //my_addr.sin_port = htons((unsigned short)listen_port);
 
         /* bind socket to the local address */
     i=bind(sock_recv, (struct sockaddr *) &my_addr, sizeof (my_addr));
@@ -115,6 +122,8 @@ int main(int argc, char *argv[]){
         if (select_ret > 0){/* anything arrive on any socket? */
             incoming_len=sizeof(remote_addr);	/* who sent to us? */
 
+            printf("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE");
+            getchar();
             recv_msg_size=recvfrom(sock_recv,buf,BUF_SIZE,0,(struct sockaddr *)&remote_addr,&incoming_len);
             if (recv_msg_size > 0){	/* what was sent? */
                 buf[recv_msg_size]='\0';
@@ -125,6 +134,11 @@ int main(int argc, char *argv[]){
                 // Do a file check for user if they have been on server before.
                 // Must register new users.
                 // Prevent unregistered users from accessng chats.
+
+                printf("Sock Recv: %i\n",sock_recv);
+                printf("Remote Address: %s\n", inet_ntoa(remote_addr.sin_addr));
+                printf("Incoming: %i\n",incoming_len);
+                printf("recv_msg_size: %i\n\n",recv_msg_size);
 
                 if(strcmp("#-connect-#",token)==0){
                   newClient(clients,from,inet_ntoa(remote_addr.sin_addr),clientCount);
@@ -142,15 +156,24 @@ int main(int argc, char *argv[]){
                   strcpy(buf, "Message Received.\n");
                   send_len = strlen(buf);
 
-                  // sendto(sock_send, buf, send_len, 0,(struct sockaddr *) &addr_send, sizeof(addr_send));
+                  bytes_sent = sendto(sock_send, buf, send_len, 0,(struct sockaddr *) &addr_send, sizeof(addr_send));
 
-                  //printf("hello\n");
+                  printf("\nBytes Sent: %i\n",bytes_sent);
+                  printf("hello\n");
                 }
                 // printf("%s\n", (token + len + 1)); //printing the token
               }
             }
         /*if (strcmp(buf,"shutdown") == 0)
             break;*/
+
+        //listen_port++;
+
+            /* make local address structure */
+        //memset(&my_addr, 0, sizeof (my_addr));	/* zero out structure */
+        //my_addr.sin_family = AF_INET;	/* address family */
+        //my_addr.sin_addr.s_addr = htonl(INADDR_ANY);  /* current machine IP */
+        //my_addr.sin_port = htons((unsigned short)listen_port);
     }
 
     close(sock_recv);
