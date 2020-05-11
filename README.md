@@ -4,6 +4,6 @@ So client3 and server3 use forks to handle the multiple clients.
 
 Still not sure how to get them to message individuals, like get client 1 to send a message and print out on client 2.
 
-But sending to server and server response is there.
+server4 and client4 is more or less like versions 2, but with the structure of versions 3 and uses the multiple ports that we discussed.
 
-Maybe if we join solution 2 and 3 we could get somewhere with that.
+I'm stuck though, not sure how to set up the different ports.
