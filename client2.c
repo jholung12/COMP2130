@@ -42,18 +42,6 @@ int main(int argc, char *argv[]){
     addr_send.sin_addr.s_addr = inet_addr(SERVER_IP);
     addr_send.sin_port = htons((unsigned short)SERVER_PORT);
 
-        /* make local address structure */
-    //memset(&my_addr, 0, sizeof (my_addr));	/* zero out structure */
-    //my_addr.sin_family = AF_INET;	/* address family */
-    //my_addr.sin_addr.s_addr = htonl(INADDR_ANY);  /* current machine IP */
-    //my_addr.sin_port = htons((unsigned short)SERVER_PORT);
-
-        /* bind socket to the local address */
-    /*i=bind(sock_recv, (struct sockaddr *) &my_addr, sizeof (my_addr));
-    if (i < 0){
-        printf("bind() failed\n");
-        exit(0);
-    }*/
      FD_ZERO(&readfds);		/* zero out socket set */
      FD_SET(sock_recv,&readfds);	/* add socket to listen to */
 
@@ -73,6 +61,9 @@ int main(int argc, char *argv[]){
     //printf("Bytes Sent: %i\n",bytes_sent);
 
     while(1){
+        if(fork()==0){
+
+
         printf("Send? ");
         fgets(text,80,stdin);
         fflush(stdin);
@@ -83,6 +74,8 @@ int main(int argc, char *argv[]){
         send_len=strlen(strcat((strcat(buf,"|")),name));
         bytes_sent=sendto(sock_send, strcat((strcat(buf,"|")),name), send_len, 0,(struct sockaddr *) &addr_send, sizeof(addr_send));
 
+        bzero(buf, sizeof(buf));
+      }
         // Receive from server.
         //read_fd_set = active_fd_set;
         //select_ret=select(sock_recv+1,&readfds,NULL,NULL,NULL);
@@ -97,16 +90,20 @@ int main(int argc, char *argv[]){
         }*/
 
         /* receiving server messages */
-        incoming_len = sizeof(addr_send);
-        recv_msg_size = recvfrom(sock_send,buf,BUF_SIZE,0,(struct sockaddr *) &addr_send, &incoming_len);
-        //printf("%i\n",recv_msg_size);
-        if(recv_msg_size < 0){
-          printf("Errorrrrrrrrr.\n");
-          exit(1);
-        }else{
+        else{
+          bzero(buf, sizeof(buf));
 
-          printf("Server: %s\n",buf);
-        }
+          incoming_len = sizeof(addr_send);
+          recv_msg_size = recvfrom(sock_send,buf,BUF_SIZE,0,(struct sockaddr *) &addr_send, &incoming_len);
+          //printf("%i\n",recv_msg_size);
+          if(recv_msg_size < 0){
+            printf("Errorrrrrrrrr.\n");
+            exit(1);
+          }else{
+
+            printf("Server: %s\n",buf);
+          }
+      }
     }
 
     close(sock_send);
