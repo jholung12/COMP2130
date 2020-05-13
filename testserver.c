@@ -6,43 +6,49 @@
 #include <string.h>	/* memset warnings */
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 
 #define BUF_SIZE	1024
 #define LISTEN_PORT	60000
 
-typedef struct Friend{
-
-} Friend;
-
 typedef struct Client{
-  int id;
-  char name[25];
-  struct sockaddr_in remote_addr; // change data type
-  int status;
-  Friend friends[10];
-} Client;
+	int id;
+	char name[20];
+	char pass[30];
+}Client;
 
-void newClient(Client *c, char name[], struct sockaddr_in remote_addr, int clientCount){
+typedef struct Connect{
+	int id;
+	char name[20];
+	struct sockaddr_in socketC;
+	bool online;
+}Connect;
+
+
+void userWrite(Client person){ //save users to file
+  FILE *fp;
+
+  if((fp = fopen("users.txt","a"))== NULL){
+    printf("FILE COULD NOT BE OPENED.\n");
+  }
+  else{
+    fwrite(&person, sizeof(struct Client), 1, fp);
+  }
+
+  fclose(fp);
+}
+
+void newClient(Client *c, char name[], char ipv4[], int clientCount){
   c[clientCount].id = clientCount;
   strcpy(c[clientCount].name,name);
-  c[clientCount].remote_addr.sin_family = remote_addr.sin_family;
-  c[clientCount].remote_addr.sin_port = remote_addr.sin_port;
-  c[clientCount].remote_addr.sin_family = remote_addr.sin_family;
-  //strcpy(c[clientCount].ipv4,ipv4);
-  /*printf("SIN_FAMILY: %i\n",remote_addr.sin_family);
-  printf("Remote Address: %s\n", inet_ntoa(remote_addr.sin_addr));
-  printf("SIN_PORT: %i\n",remote_addr.sin_port);*/
+  userWrite(c[clientCount]);
 }
 
 // alter print client
 void printClient(Client c){
   printf("Name: %s\n",c.name);
-  //printf("IP Address: %s\n",c.ipv4);
   printf("ID Number: %d\n\n",c.id);
-  printf("SIN_FAMILY: %i\n",c.remote_addr.sin_family);
-  printf("Remote Address: %s\n", inet_ntoa(c.remote_addr.sin_addr));
-  printf("SIN_PORT: %i\n",c.remote_addr.sin_port);
 }
 
 // Maybe get this to display potential friends to talk to
@@ -58,7 +64,7 @@ void messageWrite(char message[]){
   FILE *fptr;
 
   if((fptr = fopen("log.txt","a"))== NULL){
-    fprintf(stderr,"FILE COULD NOT BE OPENED.\n");
+    printf("FILE COULD NOT BE OPENED.\n");
   }
   else{
     fprintf(fptr,"%s",message);
@@ -68,46 +74,12 @@ void messageWrite(char message[]){
 }
 
 
-
-void userWrite(Client person){ //save users to file
-  FILE *fp;
-
-  if((fp = fopen("users.txt","a"))== NULL){
-    fprintf(stderr,"FILE COULD NOT BE OPENED.\n");
-  }
-  else{
-    fwrite(&person, sizeof(struct Client), 1, fp);
-  }
-
-  fclose(fp);
-}
-
-int processMsg(char msg[]){
-    FILE *fp;
-
-    if((strcmp(msg,"1")==0) || (strcmp(msg,"2")==0) || (strcmp(msg,"3")==0) ){
-        return 1;
-    }
-
-    if (strcmp(msg,"G0001")==0){
-        if((fp = fopen("workgroup.txt","r"))==NULL){
-            printf("hello");
-        }
-        else{
-            printf("hello");
-        }
-        fclose(fp);
-    }
-
-    return 0;
-}
-
 int main(int argc, char *argv[]){
     //int listen_port = 60000;
     int			sock_recv, sock_send;
     struct sockaddr_in	my_addr;
     struct sockaddr_in	addr_send;
-    int			i, process;
+    int			i;
     fd_set	readfds,active_fd_set,read_fd_set;
     struct timeval		timeout={0,0};
     int			incoming_len, send_len;
@@ -116,8 +88,10 @@ int main(int argc, char *argv[]){
     char			buf[BUF_SIZE];
     int			select_ret, bytes_sent, conn_accept;
     int len, clientCount = 0, idCount = 0;
-    char from[25], test[30], choice_str[5];
-    Client clients[20], group_chat[20], fun_chat[20];
+    char from[15];
+
+    Client clients[20];
+    Connect live[20];
 
         /* create socket for sending data */
     sock_send=socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -134,6 +108,7 @@ int main(int argc, char *argv[]){
     my_addr.sin_addr.s_addr = htonl(INADDR_ANY);  /* current machine IP */
     my_addr.sin_port = htons((unsigned short)LISTEN_PORT);
 
+
         /* bind socket to the local address */
     i=bind(sock_recv, (struct sockaddr *) &my_addr, sizeof (my_addr));
     if (i < 0){
@@ -143,12 +118,11 @@ int main(int argc, char *argv[]){
        FD_ZERO(&readfds);		/* zero out socket set */
        FD_SET(sock_recv,&readfds);	/* add socket to listen to */
         /* listen ... */
+
+    getchar();
     printf("Server running.\n");
 
-
-
     conn_accept=accept(sock_recv,(struct sockaddr *)&remote_addr,&incoming_len);
-
     while (1){
         read_fd_set = active_fd_set;
         select_ret=select(sock_recv+1,&readfds,NULL,NULL,NULL);
@@ -156,62 +130,116 @@ int main(int argc, char *argv[]){
         if (select_ret > 0){/* anything arrive on any socket? */
             incoming_len=sizeof(remote_addr);	/* who sent to us? */
 
-            //printf("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE");
-            //getchar();
             recv_msg_size=recvfrom(sock_recv,buf,BUF_SIZE,0,(struct sockaddr *)&remote_addr,&incoming_len);
-            printf("%s",buf);
-
             if (recv_msg_size > 0){	/* what was sent? */
                 buf[recv_msg_size]='\0';
+
                 char * token = strtok(buf, "|");
                 len = strlen(token);
                 strcpy(from,(token + len + 1));
 
-                /* Do a file check for user if they have been on server before.
-                Must register new users.
-                Prevent unregistered users from accessng chats.*/
+                printf("%s",buf);
 
-                //printf("recv_msg_size: %i\n\n",recv_msg_size);*/
+                getchar();
 
                 if(strcmp("#-connect-#",token)==0){
                   //printf("%s",buf);
-                  newClient(clients,from,remote_addr,clientCount);
-
+                  newClient(clients,from,inet_ntoa(remote_addr.sin_addr),clientCount);
                   clientCount++;
+                  strcpy(live[clientCount-1].name, from);
+                  live[clientCount-1].id = clientCount;
+                  live[clientCount-1].socketC = remote_addr;
+
                   if(clientCount == 3){
                     displayClients(clients,clientCount);
                   }
 
                 }
                 else{
-                  process = processMsg(buf); // trying somethign here to process where messages go ALSO LOOK HEREEEEEEEEEEEEEEEEEEEEEE
+                  for (i =0; i< clientCount; i++) {
+                    if (remote_addr.sin_port == live[i].socketC.sin_port) {
+                      strcpy(from, live[i].name);
+                      printf("Socket: %d\n",live[i].socketC.sin_port);
+                      break;
+                    }
+                  }
 
-                  printf("From %s received: %s\n",from,buf);
-                  messageWrite(buf);
-                  /*if(process == 1){
-                      //recvfrom(sock_recv,id,BUF_SIZE,0,(struct sockaddr *)&remote_addr,&incoming_len);
-                  }*/
+                  if(strstr(buf, "<sendTo>") != NULL) {
+                    //begin
+                    //get name of receiver
 
-                  // Sending back confirmation message.
+                    const char *p1 = strstr(buf, "<sendTo>")+8;
+                    const char *p2 = strstr(p1, "</sendTo>");
+                    size_t len = p2-p1;
+                    char *nem = (char*)malloc(sizeof(char)*(len+1));
+                    strncpy(nem, p1, len);
+                    nem[len] = '\0';
 
-                  //printf("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE");
-                  bytes_sent = sendto(sock_recv, buf, send_len, 0,(struct sockaddr *) &clients[1].remote_addr, sizeof(clients[1].remote_addr));
+                    const char *a = strstr(buf, "</sendTo>")+9;
+                    const char *b = strchr(buf, '\0');
+                    len = b-a;
+                    char *res = (char*)malloc(sizeof(char)*(len+1));
+                    strncpy(res, a, len);
+                    char temp[30] = "\nfrom ";
+                    strcat(temp, from);
+                    strcat(res, temp);
 
-                  bzero(buf,sizeof(buf));
-                  strcpy(buf, "SERVER: Message Received.\n");
-                  send_len = strlen(buf);
+                    for (i =0; i< clientCount; i++) {
 
-                  bytes_sent = sendto(sock_recv, buf, send_len, 0,(struct sockaddr *) &remote_addr, sizeof(remote_addr));
+                      if (strcmp(nem, live[i].name) == 0) {
 
-                  //printf("\nBytes Sent: %i\n",bytes_sent);
-                  //printf("hello\n");
+
+
+                        bytes_sent = sendto(sock_recv, res, strlen(buf), 0,(struct sockaddr *) &live[i].socketC, sizeof(live[i].socketC));
+                        bytes_sent = sendto(sock_recv, "message sent", 13, 0,(struct sockaddr *) &remote_addr, sizeof(remote_addr));
+                        messageWrite(res);
+                        break;
+                      }
+                    }
+                  }
+
+
+
+                  else {
+                    if(strstr(buf, "<sendAll>") != NULL){
+
+                      const char *a = strstr(buf, "<sendAll>")+9;
+                      const char *b = strchr(buf, '\0');
+                      len = b-a;
+                      char *res = (char*)malloc(sizeof(char)*(len+1));
+                      strncpy(res, a, len);
+                      char temp[30] = "\nfrom ";
+                      strcat(temp, from);
+                      strcat(res, temp);
+
+                      for (i =0; i< clientCount; i++) {
+
+                        bytes_sent = sendto(sock_recv, res, strlen(buf), 0,(struct sockaddr *) &live[i].socketC, sizeof(live[i].socketC));
+                        messageWrite(res);
+
+                      }
+                    }
+                    else{
+
+
+                    printf("From %s received: %s\n",from,buf);
+
+                    messageWrite(buf);
+
+                    // Sending back confirmation message.
+                    bzero(buf,sizeof(buf));
+                    strcpy(buf, "Message Received.\n");
+                    send_len = strlen(buf);
+
+                    bytes_sent = sendto(sock_recv, buf, send_len, 0,(struct sockaddr *) &remote_addr, sizeof(remote_addr));
+                  }
+                }
+                }
 
               }
             }
-        /*if (strcmp(buf,"shutdown") == 0)
-            break;*/
 
     }
-  }
+
     close(sock_recv);
 }

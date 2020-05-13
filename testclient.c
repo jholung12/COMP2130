@@ -15,11 +15,11 @@
 int main(int argc, char *argv[]){
     //int server_port = 60000;
     int			sock_send, sock_recv;
-    int i, choice, id;
+    int i, id;
     struct sockaddr_in	my_addr;
     struct sockaddr_in	addr_send;
     struct sockaddr_in	remote_addr;
-    char			text[80],buf[BUF_SIZE] = "", name[15], choice_str[5], id_str[20];
+    char			text[80],buf[BUF_SIZE] = "", name[15];
     int			recv_msg_size;
     int			send_len,bytes_sent, incoming_len, conn;
     int			select_ret;
@@ -47,115 +47,59 @@ int main(int argc, char *argv[]){
 
     conn=connect(sock_send,(struct sockaddr *)&addr_send,sizeof(addr_send));
 
+
+    printf("You must register before you can send messages.\n");
     printf("Enter Name: \n");
-    fgets(name,25,stdin);
+    fgets(name,15,stdin);
+    strtok(name, "\n");
     fflush(stdin);
 
     char string[30] = "#-connect-#|";
     strcat(string,name);
     strcpy(buf,string);
+    system("clear");
+
+
+    printf("To send messages to a specfic person write the following format: \n");
+    printf("<sendTo>[name]</sendTo>[message]\n\n");
+    printf("To send messages to all clients: \n");
+    printf("<sendAll>[message]\n\n");
+    printf("Press Enter to continue.");
+    getchar();
+
 
     send_len = strlen(buf);
     bytes_sent = sendto(sock_send, buf, send_len, 0,(struct sockaddr *) &addr_send, sizeof(addr_send));
 
-    printf("Do you want to be in Work Group/Fun Group/Private Message?\n");
-    printf("Enter 1 2 or 3 respectively.\n");
-    scanf("%i",&choice);
-    while(choice > 3 || choice < 1){
-      printf("Enter a valid option.\n");
-      scanf("%i",&choice);
-    }
-    system("clear");
-    if(choice == 1){
-      printf("\t// Work Group //\n");
-    }
-    else{
-      if(choice == 2){
-        printf("\t// Fun Group //\n");
-      }
-      else{
-        printf("\t// Private Message //\n");
-        printf("Enter ID Number of person to chat with.\n");
-        scanf("%d",&id);
-        sprintf(id_str,"%d",id);
-      }
-    }
-    sprintf(choice_str,"%d",choice);
-    //strcpy(choice_str, itoa(choice));
+    if (fork() == 0) {
+        while(1){
+            printf("Send? ");
+            fgets(text,80,stdin);
+            fflush(stdin);
+            if (strcmp(text,"quit") == 0)
+                break;
 
-    /* Initialization of what client does. ("Structures" - Kyle) */
-
-    /*send_len = strlen(choice_str);
-    bytes_sent = sendto(sock_send, choice_str, send_len, 0,(struct sockaddr *) &addr_send, sizeof(addr_send));*/
-
-    //printf("Bytes Sent: %i\n",bytes_sent);
-if(fork()==0){
-    while(1){
-
-
-        printf("Send? ");
-        fgets(text,80,stdin);
-        fflush(stdin);
-
-
-        //  THIS IS TO DIFFERENTIATE CHAT MESSAGES LOOKY HEREEEEEEEEEEEEEEEEEEEEEEEEE
-
-      /**  if (strcmp(text,"quit") == 0)
-            break;
-
-        if(choice==1){
-          strcpy(text,"|wg|");
+            strcpy(buf,text);
+            send_len=strlen(strcat((strcat(buf,"|")),name));
+            bytes_sent=sendto(sock_send, strcat((strcat(buf,"|")),name), send_len, 0,(struct sockaddr *) &addr_send, sizeof(addr_send));
         }
-        else{
-          if(choice==2){
-            strcpy(text,"|fg|");
-          }
-          else{
-            strcpy(text,"|pr|");
-            strcpy(text,id_str);
-          }
-        }
-
-        strcpy(buf,text);
-
-        printf("%s",buf);*/
-
-        send_len=strlen(strcat((strcat(buf,"|")),name));
-        bytes_sent=sendto(sock_send, strcat((strcat(buf,"|")),name), send_len, 0,(struct sockaddr *) &addr_send, sizeof(addr_send));
-
-        bzero(buf, sizeof(buf));
-      }
-        // Receive from server.
-        //read_fd_set = active_fd_set;
-        //select_ret=select(sock_recv+1,&readfds,NULL,NULL,NULL);
-        //select_ret=select(sock_recv+1,&readfds,NULL,NULL,&timeout);
-        /*if (select_ret > 0){/* anything arrive on any socket? */
-            //incoming_len=sizeof(remote_addr);	/* who sent to us? */
-            /*recv_msg_size=recvfrom(sock_recv,buf,BUF_SIZE,0,(struct sockaddr *)&remote_addr,&incoming_len);
-            if (recv_msg_size > 0){
-              buf[recv_msg_size]='\0';
-              printf("%s",buf);
-            }
-        }*/
-        }
-        /* receiving server messages */
-        else{
-          while(1){
-          bzero(buf, sizeof(buf));
-
-          incoming_len = sizeof(addr_send);
-          recv_msg_size = recvfrom(sock_send,buf,BUF_SIZE,0,(struct sockaddr *) &addr_send, &incoming_len);
-          //printf("%i\n",recv_msg_size);
-          if(recv_msg_size < 0){
+    }
+    else {
+        while(1) {
+            /* receiving server messages */
+            incoming_len = sizeof(addr_send);
+            recv_msg_size = recvfrom(sock_send,buf,BUF_SIZE,0,(struct sockaddr *) &addr_send, &incoming_len);
+            //printf("%i\n",recv_msg_size);
+            if(recv_msg_size < 0){
             printf("Errorrrrrrrrr.\n");
             exit(1);
-          }else{
+            }else{
 
             printf("%s\n",buf);
-          }
-        }
-      }
+            }
 
+        }
+    }
 
     close(sock_send);
 }
